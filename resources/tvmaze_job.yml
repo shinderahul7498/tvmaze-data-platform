@@ -1,0 +1,33 @@
+resources:
+  jobs:
+    tvmaze_pipeline:
+      name: ${var.env}-tvmaze-pipeline
+      timeout_seconds: 14400
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${var.notification_email}
+        on_duration_warning_threshold_exceeded:
+          - ${var.notification_email}
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: UTC
+        pause_status: ${var.schedule_status}
+      tags:
+        project: tvmaze
+        environment: ${var.env}
+        owner: rahul_shinde
+        layer: bronze-silver-gold
+      tasks:
+        - task_key: job_launcher
+          notebook_task:
+            notebook_path: ../orchestration/job_launcher
+            base_parameters:
+              entity_name: ALL
+              layer: ALL
+              env: ${var.env}
+          existing_cluster_id: ${var.cluster_id}
+          timeout_seconds: 14400
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
