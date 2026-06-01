@@ -1,0 +1,46 @@
+bundle:
+  name: tvmaze-analytics
+
+include:
+  - resources/*.yml
+
+workspace:
+  root_path: /Workspace/Shared/${bundle.name}/${bundle.target}
+
+targets:
+
+  dev:
+    default: true
+    workspace:
+      host: https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net
+
+    variables:
+      env: dev
+      catalog: dev_tvmaze
+
+  uat:
+    workspace:
+      host: https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net
+
+    variables:
+      env: uat
+      catalog: uat_tvmaze
+
+  prd:
+    workspace:
+      host: https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net
+
+    variables:
+      env: prd
+      catalog: prd_tvmaze
+
+variables:
+
+  env:
+    description: Environment
+
+  catalog:
+    description: Catalog Name
+
+  cluster_id:
+    description: Existing Cluster Id
