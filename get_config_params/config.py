@@ -50,16 +50,8 @@ tvmaze_config = {
         "silver_schema_name": f"{env}_tvmaze_silver",
         "gold_schema_name": f"{env}_tvmaze_gold",
         "bronze_partition_col": [],
-        "silver_partition_col": [
-            "partition_year",
-            "partition_month",
-            "partition_day"
-        ],
-        "gold_partition_col": [
-            "partition_year",
-            "partition_month",
-            "partition_day"
-        ],
+        "silver_partition_col": ["partition_year","partition_month","partition_day"],
+        "gold_partition_col": ["partition_year","partition_month","partition_day"],
         "audit_columns": ["created_date"],
         "bronze_key_column": [],
         "cols_to_encrypt_bronze": [],
@@ -83,19 +75,44 @@ tvmaze_config = {
         "silver_schema_name": f"{env}_tvmaze_silver",
         "gold_schema_name": f"{env}_tvmaze_gold",
         "bronze_partition_col": [],
-        "silver_partition_col": [
-            "partition_year",
-            "partition_month",
-            "partition_day"
-        ],
-        "gold_partition_col": [
-            "partition_year",
-            "partition_month",
-            "partition_day"
-        ],
+        "silver_partition_col": ["partition_year","partition_month","partition_day"],
+        "gold_partition_col": ["partition_year","partition_month","partition_day"],
         "audit_columns": ["created_date"],
         "bronze_key_column": [],
         "cols_to_encrypt_bronze": [],
         "cols_to_encrypt_silver": []
+    },
+    "fact_show_data": {
+        "entity_name": "fact_show_data",
+        "load_type": "incremental",
+        "write_mode": "append",
+        "schema_evolution": "Y",
+        "silver_key_ids": "show_id",
+        "silver_table_name": "fact_show_data",
+        "silver_schema_name": f"{env}_tvmaze_silver",
+        "silver_partition_col": [],
+        "audit_columns": ["dw_updated_timestamp","dw_updated_by"],
+        "cdc_column": "show_id",
+        "silver_key_column": ["show_id","episode_id","person_id"],
+        "cols_to_encrypt_silver": [],
+        "cluster_columns": ["show_id","episode_id"],
+    },
+    "show_analytics": {
+        "entity_name": "show_analytics",
+        "load_type": "full",
+        "write_mode": "overwrite",
+        "schema_evolution": "Y",
+        "silver_schema_name": f"{env}_tvmaze_silver",
+        "silver_table_name": "fact_show_data",
+        "gold_schema_name": f"{env}_tvmaze_gold",
+        "gold_tables": {
+            "episodes_per_season": "g_episodes_per_season",
+            "avg_runtime_per_show": "g_avg_runtime_per_show",
+            "top_cast_members": "g_top_cast_members",
+            "common_genres": "g_common_genres"
+        },
+        "gold_partition_col": [],
+        "gold_key_ids": [],
+        "cluster_columns": []
     }
 }

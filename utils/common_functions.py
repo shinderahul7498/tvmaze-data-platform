@@ -109,3 +109,27 @@ def clean_dataset(df, default_value="NAFS"):
             )
 
     return df
+
+# COMMAND ----------
+
+def apply_liquid_clustering(logger,schema_name,table_name,cluster_columns):
+
+    if not cluster_columns:
+        return
+
+    cluster_cols = ",".join(
+        cluster_columns
+    )
+
+    spark.sql(f"""
+        ALTER TABLE
+        {schema_name}.{table_name}
+        CLUSTER BY (
+            {cluster_cols}
+        )
+    """)
+
+    logger.info(
+        f"liquid clustering applied "
+        f"on {cluster_cols}"
+    )
