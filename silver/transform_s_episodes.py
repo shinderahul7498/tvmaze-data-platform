@@ -14,6 +14,7 @@
 from pyspark.sql.functions import current_user
 # widgets
 dbutils.widgets.dropdown("entity_name","episodes",["episodes"])
+dbutils.widgets.dropdown("env", "dev", ["dev", "uat", "prod"])
 
 # COMMAND ----------
 

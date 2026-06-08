@@ -26,6 +26,7 @@ dbutils.widgets.dropdown(
     "show_analytics",
     ["show_analytics"]
 )
+dbutils.widgets.dropdown("env", "dev", ["dev", "uat", "prod"])
 
 # COMMAND ----------
 
@@ -42,57 +43,31 @@ logger.info(f"reading : {silver_schema_name}.{silver_table_name}")
 # COMMAND ----------
 
 # DBTITLE 1,load query
-def get_gold_analytics(logger,silver_schema_name,silver_table_name,gold_tables):
-    fact_table = f"{silver_schema_name}.{silver_table_name}"
-    logger.info(f"reading fact table : {fact_table}")
-    fact_df = spark.table(fact_table)
+def get_gold_analytics(logger, silver_schema_name, silver_table_name, gold_tables):
+    fact_df = spark.table(f"{silver_schema_name}.{silver_table_name}")
     analytics_dfs = {}
 
     try:
-        analytics_dfs[gold_tables["episodes_per_season"]] = (
-            fact_df
-            .groupBy("show_id", "show_name", "season")
-            .agg(countDistinct("episode_id").alias("total_episodes"))
-        )
-        logger.info("episodes per season computed")
+        analytics_dfs[gold_tables["episodes_per_season"]] = fact_df.groupBy("show_id", "show_name", "season").agg(countDistinct("episode_id").alias("total_episodes"))
     except Exception as e:
-        logger.error(f"episodes per season failed : {str(e)}")
+        logger.error(f"episodes per season failed: {str(e)}")
 
     try:
-        analytics_dfs[gold_tables["avg_runtime_per_show"]] = (
-            fact_df
-            .groupBy("show_id", "show_name")
-            .agg(avg("runtime").alias("avg_runtime"))
-        )
-        logger.info("avg runtime per show computed")
+        analytics_dfs[gold_tables["avg_runtime_per_show"]] = fact_df.groupBy("show_id", "show_name").agg(avg("runtime").alias("avg_runtime"))
     except Exception as e:
-        logger.error(f"avg runtime failed : {str(e)}")
+        logger.error(f"avg runtime failed: {str(e)}")
 
     try:
-        cast_df = (
-            fact_df
-            .groupBy("person_id", "cast_name")
-            .agg(countDistinct("show_id").alias("total_shows"))
-        )
+        cast_df = fact_df.groupBy("person_id", "cast_name").agg(countDistinct("show_id").alias("total_shows"))
         window_spec = Window.orderBy(col("total_shows").desc())
-        analytics_dfs[gold_tables["top_cast_members"]] = (
-            cast_df
-            .withColumn("rank", row_number().over(window_spec))
-            .filter(col("rank") <= 10)
-        )
-        logger.info("top cast members computed")
+        analytics_dfs[gold_tables["top_cast_members"]] = cast_df.withColumn("rank", row_number().over(window_spec)).filter(col("rank") <= 10)
     except Exception as e:
-        logger.error(f"top cast members failed : {str(e)}")
+        logger.error(f"top cast members failed: {str(e)}")
 
     try:
-        analytics_dfs[gold_tables["common_genres"]] = (
-            fact_df
-            .groupBy("genre")
-            .agg(count("*").alias("genre_count"))
-        )
-        logger.info("common genres computed")
+        analytics_dfs[gold_tables["common_genres"]] = fact_df.groupBy("genre").agg(count("*").alias("genre_count"))
     except Exception as e:
-        logger.error(f"common genres failed : {str(e)}")
+        logger.error(f"common genres failed: {str(e)}")
 
     return analytics_dfs
 

@@ -7,15 +7,17 @@
 
 # COMMAND ----------
 
-from pyspark.sql.functions import current_user
 from pyspark.sql.functions import (
     explode,
     current_timestamp,
     current_user,
-    broadcast
+    broadcast,
+    floor, rand, array, lit
 )
+
 # widgets
 dbutils.widgets.dropdown("entity_name","fact_show_data",["fact_show_data"])
+dbutils.widgets.dropdown("env", "dev", ["dev", "uat", "prod"])
 
 # COMMAND ----------
 
@@ -35,11 +37,8 @@ logger.info(
 
 # COMMAND ----------
 
-def get_data_from_silver(
-    logger,
-    silver_schema_name,
-    silver_table_name
-):
+def get_data_from_silver(logger,silver_schema_name,silver_table_name):
+
     shows_table = f"{silver_schema_name}.s_shows"
     episodes_table = f"{silver_schema_name}.s_episodes"
     cast_table = f"{silver_schema_name}.s_cast"
@@ -62,8 +61,6 @@ def get_data_from_silver(
     )
 
     logger.info("Top skewed show_ids")
-    skew_df.show(10, False)
-
     # ==========================================================
     # Salting Technique
     # ==========================================================
@@ -128,18 +125,15 @@ def get_data_from_silver(
         )
     else:
         logger.info(f"fact table does not exist : {target_table}")
-
-    record_count = df.count()
-    logger.info(f"records loaded : {record_count}")
-
     return df
 
 # COMMAND ----------
 
+# DBTITLE 1,Cell 6
 # get different silver tables data
 df = get_data_from_silver(logger,silver_schema_name,silver_table_name)
 
-if record_count > 0:
+if df.count() > 0:
     # write silver
     df = clean_dataset(df)
 

@@ -11,12 +11,12 @@ import pandas as pd
 import requests
 from pyspark.sql.functions import current_timestamp
 import json
+from pyspark.sql import functions as F
 
 # COMMAND ----------
 
-dbutils.widgets.dropdown("entity_name","shows",
-    ["shows", "episodes", "cast"]
-)
+dbutils.widgets.dropdown("env", "dev", ["dev", "uat", "prod"])
+dbutils.widgets.dropdown("entity_name", "shows", ["shows", "episodes", "cast"])
 
 # COMMAND ----------
 
@@ -36,6 +36,11 @@ try:
     # Shows
     if entity == "shows":
         df = fetch_api_data(source_api_url)
+        df = normalize_column_names(df)
+        bronze_table = f"{bronze_schema_name}.{bronze_table_name}"
+        if spark.catalog.tableExists(bronze_table):
+            max_updated = spark.table(bronze_table).agg({"updated": "max"}).collect()[0][0]
+            df = df.filter(F.col("updated") > max_updated)
 
     # Episodes
     elif entity == "episodes":
@@ -45,10 +50,12 @@ try:
         df = None
         for show_ids in get_ids_in_batches(shows_df, batch_size=100):
             batch_df = fetch_api_data(source_api_url, show_ids, add_show_id=True)
-            if df is None:
-                df = batch_df
-            else:
-                df = df.unionByName(batch_df, allowMissingColumns=True)
+            df = batch_df if df is None else df.unionByName(batch_df, allowMissingColumns=True)
+        df = normalize_column_names(df)
+        bronze_table = f"{bronze_schema_name}.{bronze_table_name}"
+        if spark.catalog.tableExists(bronze_table):
+            bronze_df = spark.table(bronze_table)
+            df = df.alias("src").join(bronze_df.alias("tgt"), F.col("src.id") == F.col("tgt.id"), "left_anti")
 
     # Cast
     elif entity == "cast":
@@ -58,22 +65,26 @@ try:
         df = None
         for show_ids in get_ids_in_batches(shows_df, batch_size=100):
             batch_df = fetch_api_data(source_api_url, show_ids, add_show_id=True)
-            if df is None:
-                df = batch_df
-            else:
-                df = df.unionByName(batch_df, allowMissingColumns=True)
+            df = batch_df if df is None else df.unionByName(batch_df, allowMissingColumns=True)
+        df = normalize_column_names(df)
+        bronze_table = f"{bronze_schema_name}.{bronze_table_name}"
+        if spark.catalog.tableExists(bronze_table):
+            bronze_df = spark.table(bronze_table)
+            df = df.alias("src").join(
+                bronze_df.alias("tgt"),
+                (F.col("src.show_id") == F.col("tgt.show_id")) &
+                (F.col("src.person_id") == F.col("tgt.person_id")) &
+                (F.col("src.character_id") == F.col("tgt.character_id")),
+                "left_anti"
+            )
     else:
         raise Exception(f"invalid entity : {entity}")
-
-    # Clean column names
-    df = normalize_column_names(df)
 except Exception as e:
-    logger.error(f"Error occurred during data fetch for entity '{entity}': {str(e)}", exc_info=True)
+    logger.error(f"Error occurred during data fetch for entity '{entity}' : {str(e)}", exc_info=True)
     raise
 
 # COMMAND ----------
 
-# WRITE IN BRONZE TABLE
 if df is not None and df.count() > 0:
     write_dataframe(
         logger,
@@ -82,11 +93,9 @@ if df is not None and df.count() > 0:
         bronze_partition_col,
         table_keys=bronze_key_ids,
         df=df,
-        write_mode=write_mode,
+        write_mode="append",
         schema_evolution=config["schema_evolution"]
     )
     logger.info(f"{entity} bronze load completed")
-    print(f"{entity} bronze load completed")
 else:
     logger.info(f"No data to write for {entity}")
-    print(f"No data to write for {entity}")

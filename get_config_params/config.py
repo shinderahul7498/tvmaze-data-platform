@@ -1,7 +1,12 @@
 # Databricks notebook source
-env = "dev"
+# dbutils.widgets.removeAll()
+
+# COMMAND ----------
+
+dbutils.widgets.text("env", "dummy")
+env = dbutils.widgets.get("env")
 catalog = "workspace"
-base_path = "dbfs:/FileStore/tvmaze"
+base_path = f"dbfs:/FileStore/tvmaze/{env}"
 
 # COMMAND ----------
 
@@ -14,7 +19,7 @@ tvmaze_config = {
         "write_mode": "overwrite",
         "schema_evolution": "Y",
         "file_format": "json",
-        "bronze_key_ids": "id",
+        "bronze_key_ids": ["updated"],
         "silver_key_ids": "id",
         "gold_key_ids": "show_id",
         "bronze_table_name": "b_shows",
@@ -39,7 +44,8 @@ tvmaze_config = {
         "write_mode": "overwrite",
         "schema_evolution": "Y",
         "file_format": "json",
-        "bronze_key_ids": "id",
+        "bronze_load_type": "anti_join",
+        "bronze_key_ids": ["id"],
         "silver_key_ids": "episode_id",
         "gold_key_ids": "episode_id",
         "cdc_column": "",
@@ -64,7 +70,11 @@ tvmaze_config = {
         "write_mode": "overwrite",
         "schema_evolution": "Y",
         "file_format": "json",
-        "bronze_key_ids": "show_id",
+        "bronze_load_type": "anti_join",
+        "bronze_key_ids": [
+            "show_id",
+            "person_id",
+            "character_id"],
         "silver_key_ids": "person_id",
         "gold_key_ids": "person_id",
         "cdc_column": "person_updated",
